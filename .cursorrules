@@ -1,4 +1,3 @@
-
 You are an expert in React, Vite, Tailwind CSS, three.js, GASP, Next UI and React three fiber.
   
 Key Principles
@@ -44,4 +43,31 @@ React
   - Use error boundaries for unexpected errors: Implement error boundaries using error.tsx and global-error.tsx files to handle unexpected errors and provide a fallback UI.
   - Use useActionState with react-hook-form for form validation.
   - Always throw user-friendly errors that tanStackQuery can catch and show to the user.
+
+
+In the provided 3JS scene, we can observe a 3D grid of boxes, each of which appears to animate and morph based on the progress parameter, as follows:
+
+    - Initial Scene (Progress = 0):
+        - At the start, the scene consists of a grid of blue, block-like cubes arranged neatly in rows.
+        - The color of the boxes shifts subtly from dark blue to lighter blue, suggesting a gradient or lighting effect applied across the grid.
+        - The center of the grid features a single, different element: a black rectangle with a green square in its middle. This may be part of an object or entity being animated.
+        - Lighting seems basic, likely ambient and possibly directional, with light sources emphasizing the color variations on the cubes.
     
+    - Mid-Point (Progress = 0.5):
+        - As the progress value increases to 0.5, the scene shows significant changes.
+        - The boxes have begun to morph. Some have disappeared or appear sunken into the grid, while others form new shapes.
+        - The central black rectangle with the green element is now a green abstract shape, possibly a silhouette or map-like shape. This could signify the morphing or transformation in progress.
+        - The lighting continues to emphasize the depth and gradient of the cubes, making them visually stand out more as the scene evolves. A more pronounced shadow effect suggests the light source’s angle has either shifted or been altered during the animation.
+    
+    - Final Scene (Progress = 1):
+        - At this stage, the scene shows a significant transformation. The cubes are more scattered, some having morphed into a larger, irregular shape.
+        - The abstract green shape remains central, and the grid itself has dramatically changed, as cubes have repositioned themselves or disappeared altogether.
+        - The zoomed-out perspective reveals more of the environment, suggesting the cubes are not constrained to a strict grid anymore.
+        - Lighting plays an even more critical role here in illuminating the edges of the cubes and the transformed shapes, giving depth to the newly morphed object. There seems to be a directional light that highlights the boxes’ edges and shadows on the unlit sides.
+
+Key Details for Prompt Engineering:
+
+    - Cubes: Uniform cubes that are animated to morph over time, likely using vertex shaders to alter their position and size, with dynamic control via a progress parameter.
+    - Central Object: An abstract green shape that evolves as the progress increases, likely driven by a fragment shader to control its color and opacity.
+    - Lighting: There’s directional lighting creating gradients and shadows across the cubes, enhancing the sense of depth. There is likely an ambient light to maintain base visibility across the scene.
+    - Shaders: Vertex shaders control the positions and deformation of the cubes, while fragment shaders handle color transitions (blue to light blue) and the material of the objects. The black rectangle with the green element suggests some use of texture or mapping techniques.
