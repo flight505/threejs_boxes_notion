@@ -105,8 +105,7 @@ export default class Sketch {
     this.container.appendChild(this.renderer.domElement);
 
     // Camera setup
-    this.camera = new THREE.PerspectiveCamera(70, this.width / this.height, 0.01, 1000);
-    let frustumSize = this.height;
+    let frustumSize = this.height * 3; // Increase this value to zoom out
     let aspect = this.width / this.height;
     this.camera = new THREE.OrthographicCamera(
       (frustumSize * aspect) / -2,
@@ -116,7 +115,7 @@ export default class Sketch {
       -2000,
       2000
     );
-    this.camera.position.set(2, 2, 2);
+    this.camera.position.set(5, 5, 5); // Move the camera further back along the z-axis
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.time = 0;
 
@@ -156,7 +155,12 @@ export default class Sketch {
     this.width = this.container.offsetWidth;
     this.height = this.container.offsetHeight;
     this.renderer.setSize(this.width, this.height);
-    this.camera.aspect = this.width / this.height;
+    let aspect = this.width / this.height;
+    let frustumSize = this.height * 3; // Ensure this matches the frustumSize in the constructor
+    this.camera.left = (frustumSize * aspect) / -2;
+    this.camera.right = (frustumSize * aspect) / 2;
+    this.camera.top = frustumSize / 2;
+    this.camera.bottom = frustumSize / -2;
     this.camera.updateProjectionMatrix();
   }
 
