@@ -18,12 +18,12 @@ void main() {
     vec4 mask_in = texture2D(texture_mask_in, v_uv);
     vec4 mask_out = texture2D(texture_mask_out, v_uv);
 
+    // Calculate the distance from the center of the screen
     float dist = length(v_uv - 0.5) * 2.0;
+    float radius = 1.0;
 
-    float displacement = 0.0;
-    float scale = 0.0;
-
-    float radius = 2.0;
+    float displacement = 0.0; // Initialize displacement
+    float scale = 0.0; // Initialize scale
 
     // Outer circle transition
     float outer_progress = clamp(transition * 1.1, 0.0, 1.0);

@@ -3,15 +3,19 @@ import { REVISION } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
-import fragment from "./shader/fragment.glsl";
-import vertex from "./shader/vertex.glsl";
+import transition_fragment from "./shader/transition_fragment.glsl";
+import transition_vertex from "./shader/transition_vertex.glsl";
+import displacement_fragment from "./shader/displacement_fragment.glsl";
+import displacement_vertex from "./shader/displacement_vertex.glsl";
 import GUI from "lil-gui";
 import gsap from "gsap";
 import bar from "../bar.glb?url";
 import ao from "../ao.png?url";
-import fbo from '../fbo.png?url';
-import state1 from '../state1.jpg?url';
-import state2 from '../state2.jpg?url';
+import displacement_noise from '../texture-displacement-noise.png?url';
+import displacement_map from '../texture-displacement-map.png?url';
+import mask_graph from '../texture-mask-graph.png?url';
+import mask_map from '../texture-mask-map.png?url';
+
 
 // Noise shader code. Define the noise shader code.
 const noise = `
@@ -90,7 +94,7 @@ float cnoise(vec3 P){
   return 2.2 * n_xyz;
 }`
 
-// ketch Class: Main class for the 3D scene
+// sketch Class: Main class for the 3D scene
 export default class Sketch {
     constructor(options) {
         // Scene setup
@@ -127,6 +131,7 @@ export default class Sketch {
 
         // Initial state
         this.isPlaying = true;
+        this.settings = { progress: 0, progress_in: 0, progress_out: 0 }; // Ensure settings is initialized
         this.setupFBO();
         this.addObjects();
         this.resize();
@@ -138,10 +143,41 @@ export default class Sketch {
 
     // GUI settings
     setUpSettings() {
-        this.settings = { progress: 0 };
         this.gui = new GUI();
+
         this.gui.add(this.settings, "progress", 0, 1, 0.01).onChange((val) => {
-            this.fboMaterial.uniforms.uProgress.value = val;
+            this.fboMaterial.uniforms.transition.value = val;
+
+            // Ensure all textures are loaded from the start
+            if (!this.texturesLoaded) {
+                this.fboMaterial.uniforms.texture_noise.value = new THREE.TextureLoader().load(displacement_noise);
+                this.fboMaterial.uniforms.texture_mask_in.value = new THREE.TextureLoader().load(mask_graph);
+                this.fboMaterial.uniforms.texture_mask_out.value = new THREE.TextureLoader().load(mask_map);
+                this.texturesLoaded = true;
+            }
+
+            // Update transition values
+            if (val <= 0.00) {
+                // Initial visibility of cubes (mask_graph)
+                this.fboMaterial.uniforms.transition_noise.value = 1 - (val / 0.05);
+                this.fboMaterial.uniforms.transition_in.value = 0;
+                this.fboMaterial.uniforms.transition_out.value = 0;
+            } else if (val <= 0.4) {
+                // Transition to forming a country (mask_map)
+                this.fboMaterial.uniforms.transition_noise.value = 0;
+                this.fboMaterial.uniforms.transition_in.value = (val - 0.05) / 0.35;
+                this.fboMaterial.uniforms.transition_out.value = 0;
+            } else if (val <= 0.5) {
+                // mask_graph (texture-mask-graph.png) remains visible
+                this.fboMaterial.uniforms.transition_noise.value = 0;
+                this.fboMaterial.uniforms.transition_in.value = 1;
+                this.fboMaterial.uniforms.transition_out.value = (val - 0.45) / 0.05;
+            } else {
+                // Ensure mask_map remains visible
+                this.fboMaterial.uniforms.transition_noise.value = 0;
+                this.fboMaterial.uniforms.transition_in.value = 1;
+                this.fboMaterial.uniforms.transition_out.value = 1;
+            }
         });
     }
 
@@ -171,17 +207,32 @@ export default class Sketch {
         this.fboScene = new THREE.Scene();
         this.fboMaterial = new THREE.ShaderMaterial({
             uniforms: {
-                uProgress: { value: 0 },
-                uState1: { value: new THREE.TextureLoader().load(state1) },
-                uState2: { value: new THREE.TextureLoader().load(state2) },
-                uFBO: { value: null },
+                u_speed: { value: 1.0 },
+                u_time: { value: 0.0 },
+                u_frequency: { value: 1.0 },
+                u_intensity: { value: 1.0 },
+                texture_mask_in: { value: null },
+                texture_mask_out: { value: new THREE.TextureLoader().load() },
+                texture_noise: { value: new THREE.TextureLoader().load(displacement_noise) },
+                transition: { value: 0.0 },
+                transition_in: { value: 0.0 },
+                transition_out: { value: 0.0 },
+                transition_noise: { value: 0.0 }
             },
-            vertexShader: vertex,
-            fragmentShader: fragment,
+            vertexShader: transition_vertex,
+            fragmentShader: transition_fragment,
         });
         this.fbogeo = new THREE.PlaneGeometry(2, 2);
         this.fboQuad = new THREE.Mesh(this.fbogeo, this.fboMaterial);
         this.fboScene.add(this.fboQuad);
+
+        // Load texture_mask_in (mask_graph) and assign it to the uniform
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(mask_graph, (texture) => {
+            this.fboMaterial.uniforms.texture_mask_in.value = texture;
+        }, undefined, (error) => {
+            console.error('Error loading texture:', error);
+        });
     }
 
     // Add objects to the scene
@@ -327,6 +378,11 @@ export default class Sketch {
         this.time += 0.05; // Ensure this increment is appropriate for your animation speed
         this.uniforms.time.value = this.time;
 
+
+        // Update FBO uniforms in the render loop
+        this.fboMaterial.uniforms.u_time.value = this.time;
+        this.fboMaterial.uniforms.transition.value = this.settings.progress;
+
         // Render to FBO
         this.renderer.setRenderTarget(this.fbo);
         this.renderer.render(this.fboScene, this.fboCamera);
@@ -343,7 +399,4 @@ export default class Sketch {
 // Initialize Sketch
 new Sketch({
     dom: document.getElementById("container"),
-});
-
-// Static content and interfaces
-// (Place any static content or TypeScript interfaces here)
+})
