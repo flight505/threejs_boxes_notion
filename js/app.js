@@ -92,129 +92,130 @@ float cnoise(vec3 P){
 
 // ketch Class: Main class for the 3D scene
 export default class Sketch {
-  constructor(options) {
-    // Scene setup
-    this.scene = new THREE.Scene();
-    this.container = options.dom;
-    this.width = this.container.offsetWidth;
-    this.height = this.container.offsetHeight;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.setSize(this.width, this.height);
-    this.renderer.setClearColor(0x08092d, 1);
-    this.container.appendChild(this.renderer.domElement);
+    constructor(options) {
+        // Scene setup
+        this.scene = new THREE.Scene();
+        this.container = options.dom;
+        this.width = this.container.offsetWidth;
+        this.height = this.container.offsetHeight;
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.setSize(this.width, this.height);
+        this.renderer.setClearColor('#221f29', 1);
+        this.container.appendChild(this.renderer.domElement);
 
-    // Camera setup
-    let frustumSize = this.height * 3; // Increase this value to zoom out
-    let aspect = this.width / this.height;
-    this.camera = new THREE.OrthographicCamera(
-      (frustumSize * aspect) / -2,
-      (frustumSize * aspect) / 2,
-      frustumSize / 2,
-      frustumSize / -2,
-      -2000,
-      2000
-    );
-    this.camera.position.set(5, 5, 5); // Move the camera further back along the z-axis
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.time = 0;
+        // Camera setup
+        let frustumSize = this.height * 3; // Increase this value to zoom out
+        let aspect = this.width / this.height;
+        this.camera = new THREE.OrthographicCamera(
+            (frustumSize * aspect) / -2,
+            (frustumSize * aspect) / 2,
+            frustumSize / 2,
+            frustumSize / -2,
+            -2000,
+            2000
+        );
+        this.camera.position.set(5, 5, 5); // Move the camera further back along the z-axis
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.time = 0;
 
-    // Loaders setup
-    const THREE_PATH = `https://unpkg.com/three@0.${REVISION}.x`;
-    this.dracoLoader = new DRACOLoader(new THREE.LoadingManager()).setDecoderPath(`${THREE_PATH}/examples/jsm/libs/draco/gltf/`);
-    this.gltfLoader = new GLTFLoader();
-    this.gltfLoader.setDRACOLoader(this.dracoLoader);
+        // Loaders setup
+        const THREE_PATH = `https://unpkg.com/three@0.${REVISION}.x`;
+        this.dracoLoader = new DRACOLoader(new THREE.LoadingManager()).setDecoderPath(`${THREE_PATH}/examples/jsm/libs/draco/gltf/`);
+        this.gltfLoader = new GLTFLoader();
+        this.gltfLoader.setDRACOLoader(this.dracoLoader);
 
-    // Initial state
-    this.isPlaying = true;
-    this.setupFBO();
-    this.addObjects();
-    this.resize();
-    this.render();
-    this.setupResize();
-    this.addLights();
-    this.setUpSettings();
-  }
+        // Initial state
+        this.isPlaying = true;
+        this.setupFBO();
+        this.addObjects();
+        this.resize();
+        this.render();
+        this.setupResize();
+        this.addLights();
+        this.setUpSettings();
+    }
 
-  // GUI settings
-  setUpSettings() {
-    this.settings = { progress: 0 };
-    this.gui = new GUI();
-    this.gui.add(this.settings, "progress", 0, 1, 0.01).onChange((val) => {
-      this.fboMaterial.uniforms.uProgress.value = val;
-    });
-  }
+    // GUI settings
+    setUpSettings() {
+        this.settings = { progress: 0 };
+        this.gui = new GUI();
+        this.gui.add(this.settings, "progress", 0, 1, 0.01).onChange((val) => {
+            this.fboMaterial.uniforms.uProgress.value = val;
+        });
+    }
 
-  // Resize event listener
-  setupResize() {
-    window.addEventListener("resize", this.resize.bind(this));
-  }
+    // Resize event listener
+    setupResize() {
+        window.addEventListener("resize", this.resize.bind(this));
+    }
 
-  // Handle resize
-  resize() {
-    this.width = this.container.offsetWidth;
-    this.height = this.container.offsetHeight;
-    this.renderer.setSize(this.width, this.height);
-    let aspect = this.width / this.height;
-    let frustumSize = this.height * 3; // Ensure this matches the frustumSize in the constructor
-    this.camera.left = (frustumSize * aspect) / -2;
-    this.camera.right = (frustumSize * aspect) / 2;
-    this.camera.top = frustumSize / 2;
-    this.camera.bottom = frustumSize / -2;
-    this.camera.updateProjectionMatrix();
-  }
+    // Handle resize
+    resize() {
+        this.width = this.container.offsetWidth;
+        this.height = this.container.offsetHeight;
+        this.renderer.setSize(this.width, this.height);
+        let aspect = this.width / this.height;
+        let frustumSize = this.height * 3; // Ensure this matches the frustumSize in the constructor
+        this.camera.left = (frustumSize * aspect) / -2;
+        this.camera.right = (frustumSize * aspect) / 2;
+        this.camera.top = frustumSize / 2;
+        this.camera.bottom = frustumSize / -2;
+        this.camera.updateProjectionMatrix();
+    }
 
-  // Setup Frame Buffer Object (FBO)
-  setupFBO() {
-    this.fbo = new THREE.WebGLRenderTarget(this.width, this.height);
-    this.fboCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
-    this.fboScene = new THREE.Scene();
-    this.fboMaterial = new THREE.ShaderMaterial({
-      uniforms: {
-        uProgress: { value: 0 },
-        uState1: { value: new THREE.TextureLoader().load(state1) },
-        uState2: { value: new THREE.TextureLoader().load(state2) },
-        uFBO: { value: null },
-      },
-      vertexShader: vertex,
-      fragmentShader: fragment,
-    });
-    this.fbogeo = new THREE.PlaneGeometry(2, 2);
-    this.fboQuad = new THREE.Mesh(this.fbogeo, this.fboMaterial);
-    this.fboScene.add(this.fboQuad);
-  }
+    // Setup Frame Buffer Object (FBO)
+    setupFBO() {
+        this.fbo = new THREE.WebGLRenderTarget(this.width, this.height);
+        this.fboCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
+        this.fboScene = new THREE.Scene();
+        this.fboMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uProgress: { value: 0 },
+                uState1: { value: new THREE.TextureLoader().load(state1) },
+                uState2: { value: new THREE.TextureLoader().load(state2) },
+                uFBO: { value: null },
+            },
+            vertexShader: vertex,
+            fragmentShader: fragment,
+        });
+        this.fbogeo = new THREE.PlaneGeometry(2, 2);
+        this.fboQuad = new THREE.Mesh(this.fbogeo, this.fboMaterial);
+        this.fboScene.add(this.fboQuad);
+    }
 
-  // Add objects to the scene
-  addObjects() {
-    this.aoTexture = new THREE.TextureLoader().load(ao);
-    this.debug = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshBasicMaterial({ map: this.fbo.texture }));
-    this.scene.add(this.debug);
-    this.debug.position.y = 150;
-    this.aoTexture.flipY = false;
+    // Add objects to the scene
+    addObjects() {
+        this.aoTexture = new THREE.TextureLoader().load(ao);
+        this.debug = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshBasicMaterial({ map: this.fbo.texture }));
+        this.scene.add(this.debug);
+        this.debug.position.y = 150;
+        this.aoTexture.flipY = false;
 
-    this.material = new THREE.MeshPhysicalMaterial({
-      roughness: 0.65,
-      map: this.aoTexture,
-      aoMap: this.aoTexture,
-      aoMapIntensity: 0.75,
-    });
+        this.material = new THREE.MeshPhysicalMaterial({
+            roughness: 0.65,
+            map: this.aoTexture,
+            // set AO map
+            aoMap: this.aoTexture,
+            aoMapIntensity: 0.75,
+        });
 
-    this.uniforms = {
-      time: { value: 0 },
-      uFBO: { value: null },
-      aoMap: { value: this.aoTexture },
-      light_color: { value: new THREE.Color('#ffe9e9') },
-      ramp_color_one: { value: new THREE.Color('#06082D') },
-      ramp_color_two: { value: new THREE.Color('#020284') },
-      ramp_color_three: { value: new THREE.Color('#0000ff') },
-      ramp_color_four: { value: new THREE.Color('#71c7f5') },
-    };
+        this.uniforms = {
+            time: { value: 0 },
+            uFBO: { value: null },
+            aoMap: { value: this.aoTexture },
+            light_color: { value: new THREE.Color('#e0f7fa') },    // Light Aqua
+            ramp_color_one: { value: new THREE.Color('#004d40') }, // Dark Teal
+            ramp_color_two: { value: new THREE.Color('#00838f') }, // Deep Cyan
+            ramp_color_three: { value: new THREE.Color('#4fc3f7') }, // Sky Blue
+            ramp_color_four: { value: new THREE.Color('#b3e5fc') },  // Light Sky Blue
+        };
 
-    this.material.onBeforeCompile = (shader) => {
-      shader.uniforms = Object.assign(shader.uniforms, this.uniforms);
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <common>',
-        `
+        this.material.onBeforeCompile = (shader) => {
+            shader.uniforms = Object.assign(shader.uniforms, this.uniforms);
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <common>',
+                `
         uniform sampler2D uFBO;
         uniform float time;
         attribute vec2 instanceUV;
@@ -222,23 +223,23 @@ export default class Sketch {
         varying float vHeightUV;
         ${noise}
         `
-      );
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `
+            );
+            shader.vertexShader = shader.vertexShader.replace(
+                '#include <begin_vertex>',
+                `
         #include <begin_vertex>
         float n = cnoise(vec3(instanceUV.x*5., instanceUV.y*5. , time*0.1));
-        transformed.y += n*90.;
+        transformed.y += n*360.; // Increase the amplitude here
         vHeightUV = clamp(position.y*2.,0.,1.);
         vec4 transition = texture2D(uFBO, instanceUV);
         transformed *=(transition.g);
         transformed.y += transition.r*100.;
         vHeight = transformed.y;
         `
-      );
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <common>',
-        `
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <common>',
+                `
         #include <common>
         uniform vec3 light_color;
         uniform vec3 ramp_color_one;
@@ -248,93 +249,100 @@ export default class Sketch {
         varying float vHeight;
         varying float vHeightUV;
         `
-      );
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
+            );
+            shader.fragmentShader = shader.fragmentShader.replace(
+                '#include <color_fragment>',
+                `#include <color_fragment>
         vec3 highlight = mix(ramp_color_three, ramp_color_four, vHeightUV);
         diffuseColor.rgb = ramp_color_two;
         diffuseColor.rgb = mix(diffuseColor.rgb, ramp_color_three, vHeightUV);
-        diffuseColor.rgb = mix(diffuseColor.rgb, highlight, clamp(vHeight/10. -3.,0.,1.));
+        float smoothFactor = smoothstep(0.0, 1.0, (vHeight / 12.0 - 3.0)); // Fine-tune for smoother transitions
+        diffuseColor.rgb = mix(diffuseColor.rgb, highlight, smoothFactor);
         `
-      );
-    };
+            );
+        };
 
-    this.gltfLoader.load(bar, (gltf) => {
-      this.model = gltf.scene.children[0];
-      this.scene.add(this.model);
-      this.model.material = this.material;
-      this.geometry = this.model.geometry;
-      this.geometry.scale(40, 40, 40);
+        this.gltfLoader.load(bar, (gltf) => {
+            this.model = gltf.scene.children[0];
+            this.scene.add(this.model);
+            this.model.material = this.material;
+            this.geometry = this.model.geometry;
+            this.geometry.scale(40, 40, 40);
 
-      this.iSize = 100; // Change this value to adjust the number of cubes
-      this.instances = this.iSize ** 2;
-      this.instanceMesh = new THREE.InstancedMesh(this.geometry, this.material, this.instances);
-      let dummy = new THREE.Object3D();
-      let w = 60;
+            this.iSize = 100; // Reduce this value to adjust the number of cubes
+            this.instances = this.iSize ** 2;
+            this.instanceMesh = new THREE.InstancedMesh(this.geometry, this.material, this.instances);
+            let dummy = new THREE.Object3D();
+            let w = 60;
 
-      let instanceUV = new Float32Array(this.instances * 2);
-      for (let i = 0; i < this.iSize; i++) {
-        for (let j = 0; j < this.iSize; j++) {
-          instanceUV.set([i / this.iSize, j / this.iSize], (i * this.iSize + j) * 2);
-          dummy.position.set(w * (i - this.iSize / 2), 0, w * (j - this.iSize / 2));
-          dummy.updateMatrix();
-          this.instanceMesh.setMatrixAt(i * this.iSize + j, dummy.matrix);
-        }
-      }
-      this.geometry.setAttribute('instanceUV', new THREE.InstancedBufferAttribute(instanceUV, 2));
-      this.scene.add(this.instanceMesh);
-    });
-  }
-
-  // Add lights to the scene
-  addLights() {
-    const light1 = new THREE.AmbientLight(0xffffff, 0.7);
-    this.scene.add(light1);
-
-    this.spotlight = new THREE.SpotLight(0xffe9e9, 1600);
-    this.spotlight.position.set(-80 * 3, 200 * 3, -80 * 3);
-    let target = new THREE.Object3D();
-    target.position.set(0, -80, 200);
-    this.spotlight.target = target;
-    this.spotlight.intensity = 300;
-    this.spotlight.angle = 1;
-    this.spotlight.penumbra = 1.5;
-    this.spotlight.decay = 0.7;
-    this.spotlight.distance = 3000;
-    this.scene.add(this.spotlight);
-  }
-
-  // Stop rendering
-  stop() {
-    this.isPlaying = false;
-  }
-
-  // Resume rendering
-  play() {
-    if (!this.isPlaying) {
-      this.isPlaying = true;
-      this.render();
+            let instanceUV = new Float32Array(this.instances * 2);
+            for (let i = 0; i < this.iSize; i++) {
+                for (let j = 0; j < this.iSize; j++) {
+                    instanceUV.set([i / this.iSize, j / this.iSize], (i * this.iSize + j) * 2);
+                    dummy.position.set(w * (i - this.iSize / 2), 0, w * (j - this.iSize / 2));
+                    dummy.updateMatrix();
+                    this.instanceMesh.setMatrixAt(i * this.iSize + j, dummy.matrix);
+                }
+            }
+            this.geometry.setAttribute('instanceUV', new THREE.InstancedBufferAttribute(instanceUV, 2));
+            this.scene.add(this.instanceMesh);
+        });
     }
-  }
 
-  // Render loop
-  render() {
-    if (!this.isPlaying) return;
-    this.time += 0.09; // Change this value to adjust the speed of the animation, the waves of the cubes
-    requestAnimationFrame(this.render.bind(this));
-    this.uniforms.time.value = this.time;
-    this.renderer.setRenderTarget(this.fbo);
-    this.renderer.render(this.fboScene, this.fboCamera);
-    this.renderer.setRenderTarget(null);
-    this.uniforms.uFBO.value = this.fbo.texture;
-    this.renderer.render(this.scene, this.camera);
-  }
+    // Add lights to the scene
+    addLights() {
+        const ambientLight = new THREE.AmbientLight('#c5eeff', 0.4);  // Light blue-grey ambient light
+        this.scene.add(ambientLight);
+
+        this.spotlight = new THREE.SpotLight('#fbe5ff', 1200);  // Reduced intensity for a softer look
+        this.spotlight.position.set(-80 * 3, 200 * 3, -80 * 3);
+        let target = new THREE.Object3D();
+        target.position.set(0, -80, 200);
+        this.spotlight.target = target;
+        this.spotlight.intensity = 200;
+        this.spotlight.angle = 1;
+        this.spotlight.penumbra = 0.6;   // Slightly increase penumbra for softer edges
+        this.spotlight.decay = 0.6;
+        this.spotlight.distance = 3000;
+        this.scene.add(this.spotlight);
+    }
+
+    // Stop rendering
+    stop() {
+        this.isPlaying = false;
+    }
+
+    // Resume rendering
+    play() {
+        if (!this.isPlaying) {
+            this.isPlaying = true;
+            this.render();
+        }
+    }
+
+    // Render loop
+    render() {
+        if (!this.isPlaying) return;
+        requestAnimationFrame(this.render.bind(this));
+        this.time += 0.05; // Ensure this increment is appropriate for your animation speed
+        this.uniforms.time.value = this.time;
+
+        // Render to FBO
+        this.renderer.setRenderTarget(this.fbo);
+        this.renderer.render(this.fboScene, this.fboCamera);
+        this.renderer.setRenderTarget(null);
+
+        // Update FBO texture
+        this.uniforms.uFBO.value = this.fbo.texture;
+
+        // Render the scene
+        this.renderer.render(this.scene, this.camera);
+    }
 }
 
 // Initialize Sketch
 new Sketch({
-  dom: document.getElementById("container"),
+    dom: document.getElementById("container"),
 });
 
 // Static content and interfaces
